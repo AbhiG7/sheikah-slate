@@ -42,6 +42,39 @@ export function projectHorizontal(
 }
 
 /**
+ * Inverse of projectHorizontal: the bearing offset, in degrees relative to
+ * where the camera is pointed, for a given screen X. Used to cast a ray
+ * through the exact point the user tapped rather than through the centre
+ * of the screen.
+ */
+export function unprojectHorizontal(
+  screenX: number,
+  screenWidth: number,
+  horizontalFovDeg: number
+): number {
+  const halfFov = horizontalFovDeg / 2;
+  const ratio = (screenX - screenWidth / 2) / (screenWidth / 2);
+  const radians = Math.atan(ratio * Math.tan(toRadians(halfFov)));
+  return (radians * 180) / Math.PI;
+}
+
+/**
+ * Inverse of the pitch term in projectVertical: the absolute pitch of the
+ * ray passing through a given screen Y. Screen Y grows downward, so a tap
+ * above centre yields a pitch above the device's own.
+ */
+export function unprojectVertical(
+  screenY: number,
+  screenHeight: number,
+  verticalFovDeg: number,
+  devicePitchDeg: number
+): number {
+  const halfFov = verticalFovDeg / 2;
+  const ratio = (screenY - screenHeight / 2) / (screenHeight / 2);
+  return devicePitchDeg - ratio * halfFov;
+}
+
+/**
  * Projects a pin's elevation (relative to the user) and the device's
  * current pitch into a vertical screen Y for the beam's base point.
  */

@@ -9,7 +9,7 @@ import {
   useMemo,
   useState,
 } from "react";
-import { Platform } from "react-native";
+import { AppState, Platform } from "react-native";
 
 import {
   getOnboardingComplete,
@@ -17,6 +17,9 @@ import {
 } from "@/lib/permissions/permissions";
 
 export type PermissionState = "undetermined" | "granted" | "denied";
+
+/** Permissions the viewfinder cannot function without. */
+export type RequiredPermission = "camera" | "location" | "motion";
 
 interface PermissionsContextValue {
   camera: PermissionState;
@@ -27,6 +30,13 @@ interface PermissionsContextValue {
   requestCamera: () => Promise<PermissionState>;
   requestLocation: () => Promise<PermissionState>;
   requestMotion: () => Promise<PermissionState>;
+  /**
+   * First permission still missing, checked fresh on every boot so a
+   * permission revoked in system settings between runs sends the user back
+   * to ask for it rather than into a dead viewfinder. Null when all are set.
+   */
+  firstMissingPermission: RequiredPermission | null;
+  refresh: () => void;
   completeOnboarding: () => Promise<void>;
 }
 
@@ -43,25 +53,54 @@ const INITIAL_MOTION_STATE: PermissionState =
   Platform.OS === "android" ? "granted" : "undetermined";
 
 export function PermissionsProvider({ children }: { children: React.ReactNode }) {
-  const [cameraPermission, requestCameraPermission] = useCameraPermissions();
-  const [locationPermission, requestLocationPermission] =
+  const [cameraPermission, requestCameraPermission, getCameraPermission] =
+    useCameraPermissions();
+  const [locationPermission, requestLocationPermission, getLocationPermission] =
     Location.useForegroundPermissions();
   const [motion, setMotion] = useState<PermissionState>(INITIAL_MOTION_STATE);
   const [onboardingComplete, setOnboardingCompleteState] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+  const [flagLoading, setFlagLoading] = useState(true);
+
+  // The permission hooks report null until they have read the OS. Treating
+  // that as "undetermined" would bounce a fully-granted user into
+  // onboarding on every launch, so hydration is part of loading.
+  const permissionsHydrated =
+    cameraPermission !== null && locationPermission !== null;
+  const isLoading = flagLoading || !permissionsHydrated;
 
   useEffect(() => {
     getOnboardingComplete()
       .then(setOnboardingCompleteState)
-      .finally(() => setIsLoading(false));
+      .finally(() => setFlagLoading(false));
   }, []);
 
-  useEffect(() => {
+  const refreshMotion = useCallback(() => {
     if (Platform.OS !== "ios") return;
     DeviceMotion.getPermissionsAsync().then((res) =>
       setMotion(toState(res.granted, res.canAskAgain))
     );
   }, []);
+
+  useEffect(() => {
+    refreshMotion();
+  }, [refreshMotion]);
+
+  /** Re-reads every permission from the OS. */
+  const refresh = useCallback(() => {
+    getCameraPermission();
+    getLocationPermission();
+    refreshMotion();
+  }, [getCameraPermission, getLocationPermission, refreshMotion]);
+
+  // expo's permission hooks only update when asked, so a permission granted
+  // outside the app (via Open Settings) would otherwise still read as denied
+  // on return. Re-check whenever the app comes back to the foreground.
+  useEffect(() => {
+    const subscription = AppState.addEventListener("change", (next) => {
+      if (next === "active") refresh();
+    });
+    return () => subscription.remove();
+  }, [refresh]);
 
   const camera: PermissionState = cameraPermission
     ? toState(cameraPermission.granted, cameraPermission.canAskAgain)
@@ -92,6 +131,19 @@ export function PermissionsProvider({ children }: { children: React.ReactNode })
     return state;
   }, []);
 
+  /**
+   * Motion is only gated on native iOS, the one platform where it is a real
+   * persisted OS permission. Android needs no runtime prompt, and on web the
+   * granted state is synthetic and not persisted, so gating on it there
+   * would send the user to the motion screen on every single launch.
+   */
+  const firstMissingPermission: RequiredPermission | null = useMemo(() => {
+    if (camera !== "granted") return "camera";
+    if (location !== "granted") return "location";
+    if (Platform.OS === "ios" && motion !== "granted") return "motion";
+    return null;
+  }, [camera, location, motion]);
+
   const completeOnboarding = useCallback(async () => {
     await setOnboardingComplete();
     setOnboardingCompleteState(true);
@@ -107,6 +159,8 @@ export function PermissionsProvider({ children }: { children: React.ReactNode })
       requestCamera,
       requestLocation,
       requestMotion,
+      firstMissingPermission,
+      refresh,
       completeOnboarding,
     }),
     [
@@ -118,6 +172,8 @@ export function PermissionsProvider({ children }: { children: React.ReactNode })
       requestCamera,
       requestLocation,
       requestMotion,
+      firstMissingPermission,
+      refresh,
       completeOnboarding,
     ]
   );

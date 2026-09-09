@@ -3,12 +3,18 @@
     "name": "sheikah-slate",
     "slug": "sheikah-slate",
     "version": "1.0.0",
-    "orientation": "portrait",
+    "orientation": "landscape",
     "icon": "./assets/images/icon.png",
     "scheme": "sheikahslate",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "supportsTablet": false
+      "supportsTablet": false,
+      "infoPlist": {
+        "LSApplicationQueriesSchemes": [
+          "maps",
+          "comgooglemaps"
+        ]
+      }
     },
     "android": {
       "adaptiveIcon": {

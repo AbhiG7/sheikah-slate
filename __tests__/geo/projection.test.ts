@@ -2,6 +2,8 @@ import {
   angularDelta,
   projectHorizontal,
   projectVertical,
+  unprojectHorizontal,
+  unprojectVertical,
 } from "@/lib/geo/projection";
 
 describe("angularDelta", () => {
@@ -77,5 +79,54 @@ describe("projectVertical", () => {
     const level = projectVertical(1000, 0, 0, screenHeight, vFov);
     const higher = projectVertical(1000, 100, 0, screenHeight, vFov);
     expect(higher).toBeLessThan(level);
+  });
+});
+
+describe("unprojectHorizontal", () => {
+  const width = 1000;
+  const fov = 68;
+
+  it("returns 0 for a tap at screen centre", () => {
+    expect(unprojectHorizontal(width / 2, width, fov)).toBeCloseTo(0, 6);
+  });
+
+  it("returns half the FOV at the screen edges", () => {
+    expect(unprojectHorizontal(width, width, fov)).toBeCloseTo(fov / 2, 4);
+    expect(unprojectHorizontal(0, width, fov)).toBeCloseTo(-fov / 2, 4);
+  });
+
+  it("round-trips with projectHorizontal", () => {
+    // Casting a ray through a tapped point must land back on that point.
+    for (const angle of [-30, -12, -1, 0, 1, 12, 30]) {
+      const { screenX } = projectHorizontal(90 + angle, 90, width, fov);
+      expect(screenX).not.toBeNull();
+      expect(unprojectHorizontal(screenX as number, width, fov)).toBeCloseTo(
+        angle,
+        4
+      );
+    }
+  });
+});
+
+describe("unprojectVertical", () => {
+  const height = 500;
+  const vFov = 41;
+
+  it("returns the device pitch for a tap at screen centre", () => {
+    expect(unprojectVertical(height / 2, height, vFov, 7)).toBeCloseTo(7, 6);
+  });
+
+  it("aims higher for a tap above centre", () => {
+    expect(unprojectVertical(0, height, vFov, 0)).toBeCloseTo(vFov / 2, 6);
+  });
+
+  it("aims lower for a tap below centre", () => {
+    expect(unprojectVertical(height, height, vFov, 0)).toBeCloseTo(-vFov / 2, 6);
+  });
+
+  it("offsets from whatever pitch the device is held at", () => {
+    const level = unprojectVertical(0, height, vFov, 0);
+    const tilted = unprojectVertical(0, height, vFov, 10);
+    expect(tilted - level).toBeCloseTo(10, 6);
   });
 });

@@ -38,16 +38,25 @@ export default function PinsListScreen() {
           <ThemedText type="subtitle" color="teal">
             Your Pins
           </ThemedText>
-          <Pressable onPress={() => router.back()}>
-            <ThemedText color="textSecondary" type="smallBold">
-              Close
-            </ThemedText>
-          </Pressable>
+          <View style={styles.headerActions}>
+            {/* The viewfinder has no buttons, so manual placement lives
+                here rather than being unreachable. */}
+            <Pressable onPress={() => router.push("/(main)/map-picker")}>
+              <ThemedText color="teal" type="smallBold">
+                Add on map
+              </ThemedText>
+            </Pressable>
+            <Pressable onPress={() => router.back()}>
+              <ThemedText color="textSecondary" type="smallBold">
+                Close
+              </ThemedText>
+            </Pressable>
+          </View>
         </View>
 
         {!isLoading && pins.length === 0 ? (
           <ThemedText color="textSecondary" style={styles.empty}>
-            No pins yet. Place one from the camera view.
+            Nothing marked yet. Tap anything on the viewfinder to identify and pin it.
           </ThemedText>
         ) : (
           <FlatList
@@ -69,6 +78,11 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+  },
+  headerActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.four,
   },
   empty: {
     marginTop: Spacing.six,

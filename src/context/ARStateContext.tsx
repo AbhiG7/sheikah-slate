@@ -1,7 +1,7 @@
 import { createContext, useContext, useMemo } from "react";
 
 import { useCompassHeading } from "@/hooks/useCompassHeading";
-import { useDevicePitch } from "@/hooks/useDevicePitch";
+import { useDeviceAttitude } from "@/hooks/useDeviceAttitude";
 import { useUserLocation, type UserLocationState } from "@/hooks/useUserLocation";
 
 interface ARStateContextValue {
@@ -20,7 +20,7 @@ const ARStateContext = createContext<ARStateContextValue | null>(null);
 export function ARStateProvider({ children }: { children: React.ReactNode }) {
   const location = useUserLocation();
   const headingDeg = useCompassHeading();
-  const pitchDeg = useDevicePitch();
+  const pitchDeg = useDeviceAttitude();
 
   const value = useMemo(
     () => ({ location, headingDeg, pitchDeg }),

@@ -1,4 +1,8 @@
-export type PinSourceMode = "current_location" | "map_pick" | "aim_distance";
+export type PinSourceMode =
+  | "current_location"
+  | "map_pick"
+  | "aim_distance"
+  | "terrain_raycast";
 
 export interface Pin {
   id: string;

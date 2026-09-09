@@ -15,6 +15,7 @@ export default function MainLayout() {
       <Stack.Screen name="pin-editor" options={{ presentation: "modal" }} />
       <Stack.Screen name="map-picker" options={{ presentation: "modal" }} />
       <Stack.Screen name="settings" options={{ presentation: "modal" }} />
+      <Stack.Screen name="diagnostics" options={{ presentation: "modal" }} />
     </Stack>
   );
 }

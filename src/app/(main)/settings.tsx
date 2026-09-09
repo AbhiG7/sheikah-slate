@@ -1,5 +1,5 @@
 import { router } from "expo-router";
-import { Pressable, StyleSheet, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { ThemedText } from "@/components/themed-text";
@@ -30,6 +30,7 @@ export default function SettingsScreen() {
           </Pressable>
         </View>
 
+        <ScrollView contentContainerStyle={styles.scroll}>
         <View style={styles.section}>
           <ThemedText type="smallBold" color="text">
             Camera FOV Calibration
@@ -66,6 +67,19 @@ export default function SettingsScreen() {
             </Pressable>
           </View>
         </View>
+
+        <Pressable
+          style={styles.linkRow}
+          onPress={() => router.push("/(main)/diagnostics")}
+        >
+          <ThemedText type="smallBold" color="teal">
+            Sensor Diagnostics
+          </ThemedText>
+          <ThemedText type="small" color="textSecondary">
+            Live gravity, compass, and GPS readout
+          </ThemedText>
+        </Pressable>
+        </ScrollView>
       </SafeAreaView>
     </ThemedView>
   );
@@ -74,6 +88,7 @@ export default function SettingsScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   safeArea: { flex: 1, padding: Spacing.four, gap: Spacing.four },
+  scroll: { gap: Spacing.four, paddingBottom: Spacing.four },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -96,6 +111,14 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: Spacing.four,
     marginTop: Spacing.two,
+  },
+  linkRow: {
+    backgroundColor: Colors.backgroundElevated,
+    borderRadius: Spacing.three,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    padding: Spacing.three,
+    gap: Spacing.half,
   },
   stepperButton: {
     width: 44,

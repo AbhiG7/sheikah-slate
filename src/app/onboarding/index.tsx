@@ -1,5 +1,5 @@
 import { router } from "expo-router";
-import { Pressable, StyleSheet, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { ThemedText } from "@/components/themed-text";
@@ -10,6 +10,7 @@ export default function OnboardingWelcome() {
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
+        <ScrollView contentContainerStyle={styles.scroll}>
         <View style={styles.hero}>
           <ThemedText type="title" color="teal" style={styles.title}>
             Sheikah Slate
@@ -35,6 +36,7 @@ export default function OnboardingWelcome() {
             Get Started
           </ThemedText>
         </Pressable>
+        </ScrollView>
       </SafeAreaView>
     </ThemedView>
   );
@@ -47,9 +49,14 @@ const styles = StyleSheet.create({
     padding: Spacing.four,
     justifyContent: "space-between",
   },
-  hero: {
-    marginTop: Spacing.six,
+  scroll: {
+    flexGrow: 1,
+    justifyContent: "space-between",
     gap: Spacing.three,
+  },
+  hero: {
+    marginTop: Spacing.three,
+    gap: Spacing.two,
   },
   title: {
     letterSpacing: 1,

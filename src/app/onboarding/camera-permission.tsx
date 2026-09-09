@@ -5,7 +5,7 @@ import { ThemedView } from "@/components/themed-view";
 import { usePermissions } from "@/context/PermissionsContext";
 
 export default function CameraPermissionScreen() {
-  const { camera, requestCamera } = usePermissions();
+  const { camera, requestCamera, refresh } = usePermissions();
 
   return (
     <ThemedView style={{ flex: 1 }}>
@@ -14,6 +14,7 @@ export default function CameraPermissionScreen() {
         description="Sheikah Slate uses your camera as the main viewfinder, overlaying pin beams over the real world as you look through it."
         state={camera}
         onRequest={requestCamera}
+        onRecheck={refresh}
         onContinue={() => router.push("/onboarding/location-permission")}
       />
     </ThemedView>

@@ -1,4 +1,3 @@
-import { useSQLiteContext } from "expo-sqlite";
 import {
   createContext,
   useCallback,
@@ -8,12 +7,7 @@ import {
   useState,
 } from "react";
 
-import {
-  createPin,
-  deletePin,
-  getAllPins,
-  updatePin,
-} from "@/lib/storage/pinsRepository";
+import { usePinsBackend } from "@/lib/storage/backend";
 import type { CreatePinInput, Pin, UpdatePinInput } from "@/types/pin";
 
 interface PinsContextValue {
@@ -28,17 +22,17 @@ interface PinsContextValue {
 const PinsContext = createContext<PinsContextValue | null>(null);
 
 export function PinsProvider({ children }: { children: React.ReactNode }) {
-  const db = useSQLiteContext();
+  const backend = usePinsBackend();
   const [pins, setPins] = useState<Pin[] | null>(null);
   const isLoading = pins === null;
 
   const refresh = useCallback(async () => {
-    const all = await getAllPins(db);
+    const all = await backend.getAll();
     setPins(all);
-  }, [db]);
+  }, [backend]);
 
   useEffect(() => {
-    // Initial load from SQLite on mount; no Suspense-friendly data layer
+    // Initial load from the platform backend; no Suspense-friendly layer
     // is in play here, so this is the straightforward fetch-on-mount case.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     refresh();
@@ -46,27 +40,27 @@ export function PinsProvider({ children }: { children: React.ReactNode }) {
 
   const addPin = useCallback(
     async (input: CreatePinInput) => {
-      const pin = await createPin(db, input);
+      const pin = await backend.create(input);
       await refresh();
       return pin;
     },
-    [db, refresh]
+    [backend, refresh]
   );
 
   const editPin = useCallback(
     async (id: string, patch: UpdatePinInput) => {
-      await updatePin(db, id, patch);
+      await backend.update(id, patch);
       await refresh();
     },
-    [db, refresh]
+    [backend, refresh]
   );
 
   const removePin = useCallback(
     async (id: string) => {
-      await deletePin(db, id);
+      await backend.remove(id);
       await refresh();
     },
-    [db, refresh]
+    [backend, refresh]
   );
 
   const value = useMemo(

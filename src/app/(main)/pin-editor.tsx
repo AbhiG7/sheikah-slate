@@ -1,6 +1,14 @@
 import { router, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
-import { Pressable, StyleSheet, TextInput, View } from "react-native";
+import {
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  TextInput,
+  View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { ThemedText } from "@/components/themed-text";
@@ -13,6 +21,7 @@ const SOURCE_MODE_LABEL: Record<PinSourceMode, string> = {
   current_location: "Pinned at your location",
   map_pick: "Pinned on map",
   aim_distance: "Estimated by aim + distance",
+  terrain_raycast: "Identified by terrain ray-cast",
 };
 
 export default function PinEditorScreen() {
@@ -52,31 +61,43 @@ export default function PinEditorScreen() {
 
   return (
     <ThemedView style={styles.container}>
+      <KeyboardAvoidingView
+        style={styles.container}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+      >
       <SafeAreaView style={styles.safeArea}>
-        <ThemedText type="subtitle" color="teal">
-          Name This Pin
-        </ThemedText>
-        <ThemedText type="small" color="textSecondary">
-          {SOURCE_MODE_LABEL[sourceMode] ?? "New pin"} &middot;{" "}
-          {latitude.toFixed(5)}, {longitude.toFixed(5)}
-        </ThemedText>
+        {/* Landscape leaves little vertical room, and the keyboard takes
+            most of what is left, so the fields scroll and the actions stay
+            pinned below. */}
+        <ScrollView
+          contentContainerStyle={styles.scroll}
+          keyboardShouldPersistTaps="handled"
+        >
+          <ThemedText type="subtitle" color="teal">
+            Name This Pin
+          </ThemedText>
+          <ThemedText type="small" color="textSecondary">
+            {SOURCE_MODE_LABEL[sourceMode] ?? "New pin"} &middot;{" "}
+            {latitude.toFixed(5)}, {longitude.toFixed(5)}
+          </ThemedText>
 
-        <TextInput
-          style={styles.input}
-          placeholder="Label (e.g. Death Mountain)"
-          placeholderTextColor={Colors.textSecondary}
-          value={label}
-          onChangeText={setLabel}
-          autoFocus
-        />
-        <TextInput
-          style={[styles.input, styles.notesInput]}
-          placeholder="Notes (optional)"
-          placeholderTextColor={Colors.textSecondary}
-          value={notes}
-          onChangeText={setNotes}
-          multiline
-        />
+          <TextInput
+            style={styles.input}
+            placeholder="Label (e.g. Death Mountain)"
+            placeholderTextColor={Colors.textSecondary}
+            value={label}
+            onChangeText={setLabel}
+            autoFocus
+          />
+          <TextInput
+            style={[styles.input, styles.notesInput]}
+            placeholder="Notes (optional)"
+            placeholderTextColor={Colors.textSecondary}
+            value={notes}
+            onChangeText={setNotes}
+            multiline
+          />
+        </ScrollView>
 
         <View style={styles.buttonRow}>
           <Pressable style={styles.cancelButton} onPress={() => router.back()}>
@@ -94,7 +115,8 @@ export default function PinEditorScreen() {
             </ThemedText>
           </Pressable>
         </View>
-      </SafeAreaView>
+        </SafeAreaView>
+      </KeyboardAvoidingView>
     </ThemedView>
   );
 }
@@ -102,6 +124,7 @@ export default function PinEditorScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   safeArea: { flex: 1, padding: Spacing.four, gap: Spacing.three },
+  scroll: { gap: Spacing.three, paddingBottom: Spacing.three },
   input: {
     backgroundColor: Colors.backgroundElevated,
     borderRadius: Spacing.two,
@@ -118,7 +141,6 @@ const styles = StyleSheet.create({
   buttonRow: {
     flexDirection: "row",
     gap: Spacing.three,
-    marginTop: "auto",
   },
   cancelButton: {
     flex: 1,
