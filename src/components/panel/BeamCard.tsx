@@ -10,6 +10,11 @@ import { OpenInMapsButton } from "./OpenInMapsButton";
 const CARD_WIDTH = 236;
 const GAP = 18;
 
+/** The boot slate's panel blue, carried through so the card reads as the
+ *  same projected surface. Alpha kept low enough to see the world behind. */
+const HUD_BLUE = "#0B2A3ACC";
+const HUD_EDGE = "#3FE0D055";
+
 interface BeamCardProps {
   pin: Pin;
   /** Horizontal screen position of the beam it belongs to. */
@@ -75,6 +80,8 @@ export function BeamCard({
           fitsOnRight ? { left: -GAP } : { right: -GAP },
         ]}
       />
+      <View style={styles.cornerTopLeft} pointerEvents="none" />
+      <View style={styles.cornerBottomRight} pointerEvents="none" />
 
       <ThemedText type="smallBold" color="teal" numberOfLines={2}>
         {pin.label}
@@ -112,16 +119,41 @@ export function BeamCard({
 const styles = StyleSheet.create({
   card: {
     position: "absolute",
-    backgroundColor: "#0B2A3AE6",
+    backgroundColor: HUD_BLUE,
     borderRadius: Spacing.two,
     borderWidth: 1,
-    borderColor: Colors.teal,
+    borderColor: HUD_EDGE,
     padding: Spacing.three,
     gap: Spacing.two,
+    // Outer bloom so it floats off the camera feed rather than sitting on it.
     shadowColor: Colors.teal,
-    shadowOpacity: 0.5,
-    shadowRadius: 12,
+    shadowOpacity: 0.55,
+    shadowRadius: 18,
     shadowOffset: { width: 0, height: 0 },
+    elevation: 8,
+  },
+  // Sheikah-style corner brackets, drawn as two overlapping borders.
+  cornerTopLeft: {
+    position: "absolute",
+    top: -1,
+    left: -1,
+    width: 14,
+    height: 14,
+    borderTopWidth: 2,
+    borderLeftWidth: 2,
+    borderColor: Colors.teal,
+    borderTopLeftRadius: Spacing.two,
+  },
+  cornerBottomRight: {
+    position: "absolute",
+    bottom: -1,
+    right: -1,
+    width: 14,
+    height: 14,
+    borderBottomWidth: 2,
+    borderRightWidth: 2,
+    borderColor: Colors.teal,
+    borderBottomRightRadius: Spacing.two,
   },
   tether: {
     position: "absolute",

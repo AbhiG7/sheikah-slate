@@ -28,8 +28,11 @@ export type IdentifyResult =
 /**
  * Shared tile cache so repeated identifications from one spot reuse the
  * tiles already fetched rather than going back to the network.
+ *
+ * Exported so the startup preload warms this exact cache: a tap must read
+ * memory, not wait on a round trip.
  */
-const sharedCache = new TileCache();
+export const sharedTileCache = new TileCache(256);
 
 export interface IdentifyOptions {
   origin: Coordinates;
@@ -55,7 +58,7 @@ export async function identifyTarget(
     pitchDeg,
     headingAccuracyDeg = 3,
     maxDistanceMeters = DEFAULT_MAX_DISTANCE_M,
-    elevationSource = new TerrainElevationSource(sharedCache),
+    elevationSource = new TerrainElevationSource(sharedTileCache),
   } = options;
 
   await elevationSource.prefetchCorridor(origin, bearingDeg, maxDistanceMeters);

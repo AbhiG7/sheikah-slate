@@ -1,87 +1,137 @@
-import { useEffect } from "react";
 import Svg, { Defs, LinearGradient, Rect, Stop } from "react-native-svg";
 import Animated, {
   useAnimatedStyle,
-  useSharedValue,
-  withTiming,
+  type SharedValue,
 } from "react-native-reanimated";
 
 import { Colors } from "@/constants/theme";
+import {
+  BEAM_WORLD_HEIGHT_M,
+  MAX_RENDER_DISTANCE_M,
+  MIN_BEAM_SCREEN_PX,
+} from "@/lib/geo/constants";
+import type { PinAnchor } from "@/hooks/usePinAnchors";
 
-const REF_DISTANCE_M = 100;
-const MIN_HEIGHT = 50;
-const MAX_HEIGHT = 240;
-const MAX_RENDER_DISTANCE_M = 50_000;
-const GLOW_WIDTH = 36;
-const CORE_WIDTH = 6;
+const GLOW_WIDTH = 40;
+const CORE_WIDTH = 5;
+const DEG_TO_RAD = Math.PI / 180;
 
 interface BeamProps {
-  screenX: number;
-  baseY: number;
-  distanceMeters: number;
-  focused: boolean;
+  anchor: PinAnchor;
+  headingDeg: SharedValue<number>;
+  pitchDeg: SharedValue<number>;
+  screenWidth: number;
+  screenHeight: number;
+  horizontalFovDeg: number;
+  verticalFovDeg: number;
 }
 
-function heightForDistance(distanceMeters: number): number {
-  const scaled = 140 * Math.sqrt(REF_DISTANCE_M / Math.max(distanceMeters, 1));
-  return Math.min(MAX_HEIGHT, Math.max(MIN_HEIGHT, scaled));
-}
+/**
+ * A pin rendered as a pillar of light rising from the spot it marks.
+ *
+ * The whole projection runs inside the animated style, driven directly by
+ * the orientation shared values. Nothing here re-renders while you pan: the
+ * position is recomputed per frame by the animation runtime, which is the
+ * difference between tracking the camera and lagging seconds behind it.
+ *
+ * The maths is inlined rather than calling the helpers in lib/geo because a
+ * worklet cannot reach ordinary imported functions.
+ */
+export function Beam({
+  anchor,
+  headingDeg,
+  pitchDeg,
+  screenWidth,
+  screenHeight,
+  horizontalFovDeg,
+  verticalFovDeg,
+}: BeamProps) {
+  const { bearingDeg, distanceMeters, altitudeDeltaM } = anchor;
 
-function opacityForDistance(distanceMeters: number): number {
-  const ratio = 1 - distanceMeters / MAX_RENDER_DISTANCE_M;
-  return Math.min(1, Math.max(0.15, ratio));
-}
+  const baseOpacity = Math.min(
+    1,
+    Math.max(0.35, 1 - distanceMeters / MAX_RENDER_DISTANCE_M)
+  );
 
-export function Beam({ screenX, baseY, distanceMeters, focused }: BeamProps) {
-  const height = heightForDistance(distanceMeters);
-  const baseOpacity = opacityForDistance(distanceMeters);
-  const strokeWidth = distanceMeters < 500 ? CORE_WIDTH : CORE_WIDTH * 0.6;
+  const animatedStyle = useAnimatedStyle(() => {
+    const halfHorizontal = horizontalFovDeg / 2;
+    const relativeAngle =
+      (((bearingDeg - headingDeg.value + 540) % 360) - 180);
 
-  const animX = useSharedValue(screenX);
-  const animY = useSharedValue(baseY);
-  const animFocus = useSharedValue(focused ? 1 : 0);
+    // Off-frame beams cost nothing beyond this early exit.
+    if (Math.abs(relativeAngle) > halfHorizontal) {
+      return { opacity: 0, transform: [{ translateX: 0 }, { translateY: 0 }], height: 0 };
+    }
 
-  useEffect(() => {
-    animX.value = withTiming(screenX, { duration: 100 });
-    animY.value = withTiming(baseY, { duration: 100 });
-  }, [screenX, baseY, animX, animY]);
+    const screenX =
+      screenWidth / 2 +
+      (Math.tan(relativeAngle * DEG_TO_RAD) /
+        Math.tan(halfHorizontal * DEG_TO_RAD)) *
+        (screenWidth / 2);
 
-  useEffect(() => {
-    animFocus.value = withTiming(focused ? 1 : 0, { duration: 200 });
-  }, [focused, animFocus]);
+    const halfVertical = verticalFovDeg / 2;
+    const horizonY =
+      screenHeight / 2 + (pitchDeg.value / halfVertical) * (screenHeight / 2);
 
-  const containerStyle = useAnimatedStyle(() => ({
-    position: "absolute",
-    left: animX.value - GLOW_WIDTH / 2,
-    top: animY.value - height,
-    width: GLOW_WIDTH,
-    height,
-    transform: [{ scale: 1 + animFocus.value * 0.15 }],
-  }));
+    const baseElevation =
+      distanceMeters > 0
+        ? Math.atan2(altitudeDeltaM, distanceMeters) / DEG_TO_RAD
+        : 0;
+    const topElevation =
+      distanceMeters > 0
+        ? Math.atan2(altitudeDeltaM + BEAM_WORLD_HEIGHT_M, distanceMeters) /
+          DEG_TO_RAD
+        : 0;
 
-  const color = focused ? Colors.gold : Colors.teal;
-  const glowColor = focused ? Colors.gold : Colors.tealDim;
+    const baseY = horizonY - (baseElevation / halfVertical) * (screenHeight / 2);
+    const topY = horizonY - (topElevation / halfVertical) * (screenHeight / 2);
+    const height = Math.min(
+      screenHeight,
+      Math.max(MIN_BEAM_SCREEN_PX, baseY - topY)
+    );
+
+    return {
+      opacity: 1,
+      height,
+      transform: [
+        { translateX: screenX - GLOW_WIDTH / 2 },
+        { translateY: baseY - height },
+      ],
+    };
+  });
 
   return (
-    <Animated.View style={containerStyle} pointerEvents="none">
-      <Svg width={GLOW_WIDTH} height={height}>
+    <Animated.View style={[{ position: "absolute", top: 0, left: 0, width: GLOW_WIDTH }, animatedStyle]} pointerEvents="none">
+      <Svg width={GLOW_WIDTH} height="100%" preserveAspectRatio="none">
         <Defs>
-          <LinearGradient id="glow" x1="0" y1="1" x2="0" y2="0">
-            <Stop offset="0" stopColor={glowColor} stopOpacity={baseOpacity * 0.5} />
-            <Stop offset="1" stopColor={glowColor} stopOpacity={0} />
+          {/* y1 is the bottom: solid at the base, gone at the top. */}
+          <LinearGradient id="beam-glow" x1="0" y1="1" x2="0" y2="0">
+            <Stop offset="0" stopColor={Colors.teal} stopOpacity={baseOpacity * 0.4} />
+            <Stop offset="0.45" stopColor={Colors.teal} stopOpacity={baseOpacity * 0.14} />
+            <Stop offset="1" stopColor={Colors.teal} stopOpacity={0} />
           </LinearGradient>
-          <LinearGradient id="core" x1="0" y1="1" x2="0" y2="0">
-            <Stop offset="0" stopColor={color} stopOpacity={baseOpacity} />
-            <Stop offset="1" stopColor={color} stopOpacity={0} />
+          <LinearGradient id="beam-core" x1="0" y1="1" x2="0" y2="0">
+            <Stop offset="0" stopColor="#FFFFFF" stopOpacity={baseOpacity} />
+            <Stop offset="0.12" stopColor={Colors.teal} stopOpacity={baseOpacity} />
+            <Stop offset="0.65" stopColor={Colors.teal} stopOpacity={baseOpacity * 0.45} />
+            <Stop offset="1" stopColor={Colors.teal} stopOpacity={0} />
           </LinearGradient>
         </Defs>
-        <Rect x={0} y={0} width={GLOW_WIDTH} height={height} fill="url(#glow)" />
+
+        <Rect x={0} y={0} width={GLOW_WIDTH} height="100%" fill="url(#beam-glow)" />
         <Rect
-          x={GLOW_WIDTH / 2 - strokeWidth / 2}
+          x={GLOW_WIDTH / 2 - CORE_WIDTH}
           y={0}
-          width={strokeWidth}
-          height={height}
-          fill="url(#core)"
+          width={CORE_WIDTH * 2}
+          height="100%"
+          fill="url(#beam-glow)"
+        />
+        <Rect
+          x={GLOW_WIDTH / 2 - CORE_WIDTH / 2}
+          y={0}
+          width={CORE_WIDTH}
+          height="100%"
+          fill="url(#beam-core)"
         />
       </Svg>
     </Animated.View>

@@ -12,20 +12,28 @@ import { ThemedText } from "@/components/themed-text";
 import { Colors, Spacing } from "@/constants/theme";
 import { ARStateProvider, useARState } from "@/context/ARStateContext";
 import { usePins } from "@/context/PinsContext";
-import { useBeamProjections } from "@/hooks/useBeamProjections";
-import { useFocusedBeam } from "@/hooks/useFocusedBeam";
+import { useFovMultiplier } from "@/hooks/useFovMultiplier";
+import { usePinAnchors } from "@/hooks/usePinAnchors";
+import {
+  DEFAULT_HORIZONTAL_FOV_DEG,
+  DEFAULT_VERTICAL_FOV_DEG,
+} from "@/lib/geo/constants";
 import { identifyTarget } from "@/lib/terrain/identify";
 
 const NOTICE_MS = 2200;
 
 function CameraScreenContent() {
   const { pins, addPin } = usePins();
-  const { location, headingDeg, pitchDeg } = useARState();
+  const { location, orientation } = useARState();
   const { width, height } = useWindowDimensions();
+  const [fovMultiplier] = useFovMultiplier();
 
-  const projections = useBeamProjections(pins, location, headingDeg, pitchDeg);
-  const focusedPinId = useFocusedBeam(projections);
-  const focused = projections.find((p) => p.pin.id === focusedPinId) ?? null;
+  const horizontalFov = DEFAULT_HORIZONTAL_FOV_DEG * fovMultiplier;
+  const verticalFov = DEFAULT_VERTICAL_FOV_DEG * fovMultiplier;
+
+  const anchors = usePinAnchors(pins, location);
+  const [focusedPinId, setFocusedPinId] = useState<string | null>(null);
+  const focused = anchors.find((a) => a.pin.id === focusedPinId) ?? null;
 
   const [isScanning, setIsScanning] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
@@ -54,6 +62,8 @@ function CameraScreenContent() {
 
     setIsScanning(true);
     try {
+      // Shared values are invisible to React, so read them explicitly here.
+      const { headingDeg, pitchDeg } = orientation.read();
       const result = await identifyTarget({
         origin: location.coords,
         bearingDeg: headingDeg,
@@ -91,13 +101,22 @@ function CameraScreenContent() {
           touches or is meant to receive them, like the card's buttons. */}
       <Pressable style={StyleSheet.absoluteFill} onPress={handleTap} />
 
-      <BeamOverlay projections={projections} focusedPinId={focusedPinId} />
+      <BeamOverlay
+        anchors={anchors}
+        headingDeg={orientation.headingDeg}
+        pitchDeg={orientation.pitchDeg}
+        screenWidth={width}
+        screenHeight={height}
+        horizontalFovDeg={horizontalFov}
+        verticalFovDeg={verticalFov}
+        onFocusChange={setFocusedPinId}
+      />
 
       {focused ? (
         <BeamCard
           pin={focused.pin}
-          beamX={focused.screenX}
-          beamY={focused.baseY}
+          beamX={width / 2}
+          beamY={height / 2}
           screenWidth={width}
           screenHeight={height}
           insetX={barWidth}

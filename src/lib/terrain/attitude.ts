@@ -1,3 +1,11 @@
+/**
+ * Sign of the device Z axis in the gravity reading, isolated here as the
+ * single place to flip after checking on hardware: hold the phone upright
+ * and confirm pitch reads ~0, then lay it screen-up and confirm ~-90.
+ * Platforms disagree on this convention.
+ */
+export const GRAVITY_Z_SIGN: 1 | -1 = 1;
+
 export interface Vector3 {
   x: number;
   y: number;

@@ -2,20 +2,14 @@ const { getDefaultConfig } = require("expo/metro-config");
 
 const config = getDefaultConfig(__dirname);
 
-// expo-sqlite's web build ships a WASM binary, which Metro treats as an
-// unknown source file unless it is registered as an asset.
+// Registered so a .wasm import resolves as an asset rather than as an
+// unknown source file. Nothing in the web bundle needs it today, since pin
+// storage moved off expo-sqlite on web, but it costs nothing.
 config.resolver.assetExts.push("wasm");
 
-// That WASM build needs SharedArrayBuffer, which browsers only expose to
-// cross-origin isolated pages. "credentialless" keeps cross-origin fetches
-// (the terrain and vector tiles) working without requiring CORP headers
-// from those hosts.
-config.server.enhanceMiddleware = (middleware) => {
-  return (req, res, next) => {
-    res.setHeader("Cross-Origin-Opener-Policy", "same-origin");
-    res.setHeader("Cross-Origin-Embedder-Policy", "credentialless");
-    return middleware(req, res, next);
-  };
-};
+// No COOP/COEP headers here on purpose. They were added for expo-sqlite's
+// WASM worker, which the web build no longer uses, and serving the page
+// cross-origin isolated for no reason is a needless variable when
+// debugging sensor access.
 
 module.exports = config;
