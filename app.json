@@ -9,6 +9,8 @@
     "userInterfaceStyle": "automatic",
     "ios": {
       "supportsTablet": false,
+      "bundleIdentifier": "com.abhig7.sheikahslate",
+      "appleTeamId": "25S47AT46X",
       "infoPlist": {
         "LSApplicationQueriesSchemes": [
           "maps",
